@@ -1,10 +1,18 @@
 services:
-  kernel:
+  excel-tool-jupyter:
     build: .
+    container_name: excel-tool-jupyter
     restart: unless-stopped
-    # Bind to loopback only — nginx proxies /ws to here.
-    # Never expose port 8765 directly to the internet.
+
     ports:
-      - "127.0.0.1:8765:8765"
+      - "127.0.0.1:8008:8008"
+
     environment:
       - PYTHONUNBUFFERED=1
+
+    networks:
+      - proxy_network
+
+networks:
+  proxy_network:
+    external: true
