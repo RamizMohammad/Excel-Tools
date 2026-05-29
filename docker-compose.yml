@@ -1,0 +1,10 @@
+services:
+  kernel:
+    build: .
+    restart: unless-stopped
+    # Bind to loopback only — nginx proxies /ws to here.
+    # Never expose port 8765 directly to the internet.
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      - PYTHONUNBUFFERED=1

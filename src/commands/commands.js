@@ -1,0 +1,2 @@
+/* global Office */
+Office.onReady(() => {});

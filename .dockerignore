@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.git/
+src/
+assets/
+package.json
+package-lock.json
+webpack.config.js
+manifest*.xml
+deploy/
+.claude/
+Antigravity/
+Antigravity IDE.tar.gz
+.~lock.*
+*.md

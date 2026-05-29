@@ -1,0 +1,12 @@
+# --- core (required to run the kernel server) ---
+fastapi>=0.110
+uvicorn[standard]>=0.27
+jupyter_client>=8.6
+ipykernel>=6.29
+
+# --- recommended (so DataFrame round-tripping works out of the box) ---
+pandas>=2.0
+numpy>=1.24
+
+# --- test only (for server/test_client.py) ---
+websockets>=12.0
