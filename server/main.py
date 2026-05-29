@@ -38,6 +38,7 @@ import os
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from .kernel_manager import KernelSession
 
@@ -59,6 +60,14 @@ app.add_middleware(
 @app.get("/health")
 async def health():
     return {"ok": True, "service": "jupyxl-kernel"}
+
+
+# Serve the built frontend. Must be mounted AFTER all API routes so /ws and
+# /health are matched first. The directory won't exist during local Python-only
+# runs; skip gracefully so the dev workflow isn't broken.
+_DIST = os.path.join(os.path.dirname(__file__), "..", "dist")
+if os.path.isdir(_DIST):
+    app.mount("/", StaticFiles(directory=_DIST, html=True), name="static")
 
 
 def _translate(msg: dict, cell_id: str) -> dict | None:

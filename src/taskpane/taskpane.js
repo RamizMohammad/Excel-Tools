@@ -2,7 +2,10 @@
 import { KernelClient } from "./kernel-client.js";
 import { writeDataFrame, readSelection } from "./excel-writer.js";
 
-const DEFAULT_KERNEL_URL = "ws://localhost:8765/ws";
+const DEFAULT_KERNEL_URL =
+  location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    ? "ws://localhost:8008/ws"
+    : `wss://${location.hostname}/ws`;
 
 const state = {
   client: null,

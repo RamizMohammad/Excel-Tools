@@ -12,12 +12,12 @@
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="JupyXL" />
   <Description DefaultValue="Run a live Jupyter kernel inside Excel and push formatted DataFrames straight to the grid." />
-  <IconUrl DefaultValue="https://localhost:3000/assets/icon-32.png" />
-  <HighResolutionIconUrl DefaultValue="https://localhost:3000/assets/icon-64.png" />
-  <SupportUrl DefaultValue="https://localhost:3000/" />
+  <IconUrl DefaultValue="https://excel.jupyter.mohammadramiz.in/assets/icon-32.png" />
+  <HighResolutionIconUrl DefaultValue="https://excel.jupyter.mohammadramiz.in/assets/icon-64.png" />
+  <SupportUrl DefaultValue="https://excel.jupyter.mohammadramiz.in/" />
 
   <AppDomains>
-    <AppDomain>https://localhost:3000</AppDomain>
+    <AppDomain>https://excel.jupyter.mohammadramiz.in</AppDomain>
   </AppDomains>
 
   <Hosts>
@@ -25,7 +25,7 @@
   </Hosts>
 
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://localhost:3000/taskpane.html" />
+    <SourceLocation DefaultValue="https://excel.jupyter.mohammadramiz.in/taskpane.html" />
   </DefaultSettings>
 
   <Permissions>ReadWriteDocument</Permissions>
@@ -76,14 +76,14 @@
 
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.16" DefaultValue="https://localhost:3000/assets/icon-16.png" />
-        <bt:Image id="Icon.32" DefaultValue="https://localhost:3000/assets/icon-32.png" />
-        <bt:Image id="Icon.80" DefaultValue="https://localhost:3000/assets/icon-80.png" />
+        <bt:Image id="Icon.16" DefaultValue="https://excel.jupyter.mohammadramiz.in/assets/icon-16.png" />
+        <bt:Image id="Icon.32" DefaultValue="https://excel.jupyter.mohammadramiz.in/assets/icon-32.png" />
+        <bt:Image id="Icon.80" DefaultValue="https://excel.jupyter.mohammadramiz.in/assets/icon-80.png" />
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="Commands.Url" DefaultValue="https://localhost:3000/commands.html" />
-        <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:3000/taskpane.html" />
-        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://localhost:3000/" />
+        <bt:Url id="Commands.Url" DefaultValue="https://excel.jupyter.mohammadramiz.in/commands.html" />
+        <bt:Url id="Taskpane.Url" DefaultValue="https://excel.jupyter.mohammadramiz.in/taskpane.html" />
+        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://excel.jupyter.mohammadramiz.in/" />
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GetStarted.Title" DefaultValue="JupyXL is ready" />

@@ -5,7 +5,7 @@ const devCerts = require("office-addin-dev-certs");
 
 module.exports = async (env, options) => {
   const dev = options.mode === "development";
-  const httpsOptions = await devCerts.getHttpsServerOptions();
+  const httpsOptions = dev ? await devCerts.getHttpsServerOptions() : {};
 
   return {
     devtool: dev ? "source-map" : false,
