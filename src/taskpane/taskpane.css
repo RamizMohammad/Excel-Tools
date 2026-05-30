@@ -72,6 +72,27 @@ html, body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
 }
 
 #app {
@@ -285,10 +306,12 @@ html, body {
 #cells {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  scroll-behavior: smooth;
 }
 
 .cell {
@@ -297,7 +320,7 @@ html, body {
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--bg-cell);
-  overflow: hidden;
+  overflow: visible;
   transition: border-color 0.15s;
   box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 2px 4px rgba(0,0,0,.02);
 }
@@ -342,6 +365,60 @@ html, body {
   padding: 10px 12px;
 }
 
+.code-editor-wrapper {
+  position: relative;
+  max-height: 400px;
+  overflow-y: auto;
+  border-radius: var(--r);
+}
+
+.suggestions-panel {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--bg-cell);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: 0 4px 12px rgba(0,0,0,.15);
+  z-index: 1000;
+  margin-top: 0;
+}
+
+.suggestions-panel.visible {
+  display: block;
+}
+
+.suggestion-item {
+  padding: 8px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--line-soft);
+  transition: background 0.1s;
+}
+
+.suggestion-item:hover,
+.suggestion-item.selected {
+  background: var(--accent-bg);
+}
+
+.suggestion-label {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.suggestion-desc {
+  font-family: var(--ui);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
 .code {
   width: 100%;
   resize: none;
@@ -358,7 +435,10 @@ html, body {
   appearance: none;
   min-height: 52px;
   display: block;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: auto;
+  word-wrap: normal;
+  white-space: pre;
 }
 .code:focus { outline: none; }
 .code::selection { background: color-mix(in srgb, var(--accent) 25%, transparent); }
@@ -398,7 +478,12 @@ html, body {
 /* ============================================================
    Output
    ============================================================ */
-.output { margin-top: 6px; }
+.output {
+  margin-top: 6px;
+  max-height: 300px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
 .output:empty { display: none; }
 
 .output pre {
@@ -455,6 +540,9 @@ html, body {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  overflow-x: auto;
 }
 
 .df-meta {

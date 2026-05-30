@@ -1,6 +1,7 @@
 /* global Office */
 import { readSelection, writeDataFrame } from "./excel-writer.js";
 import { KernelClient } from "./kernel-client.js";
+import { updateSuggestions, selectSuggestion, hideSuggestions, renderSuggestions } from "./autocomplete.js";
 
 const DEFAULT_KERNEL_URL =
   location.hostname === "localhost" || location.hostname === "127.0.0.1"
@@ -107,7 +108,10 @@ function addCell(initialCode = "", afterCell = null) {
       <button class="run-btn" title="Run (Ctrl/Cmd+Enter)">▶</button>
     </div>
     <div class="cell-main">
-      <textarea class="code" spellcheck="false" rows="3"></textarea>
+      <div class="code-editor-wrapper">
+        <textarea class="code" spellcheck="false" rows="3"></textarea>
+        <div class="suggestions-panel"></div>
+      </div>
       <div class="output"></div>
     </div>
     <div class="cell-actions">
@@ -116,13 +120,17 @@ function addCell(initialCode = "", afterCell = null) {
     </div>`;
 
   const textarea = wrapper.querySelector(".code");
+  const suggestionsPanel = wrapper.querySelector(".suggestions-panel");
   textarea.value = initialCode;
+
+  const suggestionsState = { visible: false, selectedIndex: 0, items: [], panel: suggestionsPanel, textarea };
 
   textarea.addEventListener("input", () => {
     cell.code = textarea.value;
     autoSize(textarea);
+    updateSuggestions(textarea, suggestionsState);
   });
-  textarea.addEventListener("keydown", (e) => handleKeydown(e, cell, textarea));
+  textarea.addEventListener("keydown", (e) => handleKeydown(e, cell, textarea, suggestionsState));
 
   wrapper.querySelector(".run-btn").addEventListener("click", () => runCell(cell));
   wrapper.querySelector(".add-below").addEventListener("click", () => addCell("", cell));
@@ -153,7 +161,30 @@ function deleteCell(cell) {
   if (state.cells.length === 0) addCell();
 }
 
-function handleKeydown(e, cell, textarea) {
+function handleKeydown(e, cell, textarea, suggestionsState) {
+  // Handle suggestions navigation
+  if (suggestionsState && suggestionsState.visible) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      suggestionsState.selectedIndex = (suggestionsState.selectedIndex + 1) % suggestionsState.items.length;
+      renderSuggestions(suggestionsState);
+      return;
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      suggestionsState.selectedIndex = (suggestionsState.selectedIndex - 1 + suggestionsState.items.length) % suggestionsState.items.length;
+      renderSuggestions(suggestionsState);
+      return;
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      selectSuggestion(textarea, suggestionsState);
+      return;
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      hideSuggestions(suggestionsState);
+      return;
+    }
+  }
+
   // Tab inserts spaces instead of moving focus
   if (e.key === "Tab") {
     e.preventDefault();
