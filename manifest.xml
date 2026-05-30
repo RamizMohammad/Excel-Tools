@@ -7,7 +7,7 @@
   xsi:type="TaskPaneApp">
 
   <Id>a4341602-edb3-4127-967b-6b59cc978779</Id>
-  <Version>1.0.0.0</Version>
+  <Version>1.1.0.0</Version>
   <ProviderName>JupyXL</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="JupyXL" />

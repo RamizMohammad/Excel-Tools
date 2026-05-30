@@ -55,6 +55,11 @@
    ============================================================ */
 *, *::before, *::after { box-sizing: border-box; }
 
+/* Tell the browser we're handling colours ourselves — prevents WebView/system
+   dark-mode from overriding textarea/input backgrounds and text colours. */
+:root { color-scheme: dark; }
+@media (prefers-color-scheme: light) { :root { color-scheme: light; } }
+
 html, body {
   margin: 0;
   height: 100%;
@@ -334,8 +339,9 @@ html, body {
   width: 100%;
   resize: none;
   border: none;
-  background: transparent;
+  background: var(--bg-cell);
   color: var(--text);
+  caret-color: var(--accent);
   font-family: var(--mono);
   font-size: 12px;
   line-height: 1.65;
@@ -343,6 +349,7 @@ html, body {
   tab-size: 4;
 }
 .code:focus { outline: none; }
+.code::selection { background: color-mix(in srgb, var(--accent) 25%, transparent); }
 
 /* Cell actions — fade in on hover */
 .cell-actions {
