@@ -8,9 +8,9 @@
 
   <Id>a4341602-edb3-4127-967b-6b59cc978779</Id>
   <Version>1.1.0.0</Version>
-  <ProviderName>JupyXL</ProviderName>
-  <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="JupyXL" />
+  <ProviderName>ExcelNotebook</ProviderName>
+  <DefaultLocale>en-IN</DefaultLocale>
+  <DisplayName DefaultValue="ExcelNotebook" />
   <Description DefaultValue="Run a live Jupyter kernel inside Excel and push formatted DataFrames straight to the grid." />
   <IconUrl DefaultValue="https://excel.jupyter.mohammadramiz.in/assets/icon-32.png" />
   <HighResolutionIconUrl DefaultValue="https://excel.jupyter.mohammadramiz.in/assets/icon-64.png" />
