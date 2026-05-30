@@ -1,6 +1,6 @@
 /* global Office */
+import { readSelection, writeDataFrame } from "./excel-writer.js";
 import { KernelClient } from "./kernel-client.js";
-import { writeDataFrame, readSelection } from "./excel-writer.js";
 
 const DEFAULT_KERNEL_URL =
   location.hostname === "localhost" || location.hostname === "127.0.0.1"
@@ -117,7 +117,6 @@ function addCell(initialCode = "", afterCell = null) {
 
   const textarea = wrapper.querySelector(".code");
   textarea.value = initialCode;
-  autoSize(textarea);
 
   textarea.addEventListener("input", () => {
     cell.code = textarea.value;
@@ -141,6 +140,9 @@ function addCell(initialCode = "", afterCell = null) {
     list.appendChild(wrapper);
     state.cells.push(cell);
   }
+  
+  // Auto-size after DOM insertion to ensure proper calculations
+  requestAnimationFrame(() => autoSize(textarea));
   textarea.focus();
   return cell;
 }

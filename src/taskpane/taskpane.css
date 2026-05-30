@@ -346,17 +346,23 @@ html, body {
   width: 100%;
   resize: none;
   border: none;
-  background: var(--bg-cell);
-  color: var(--text);
+  background: var(--bg-cell) !important;
+  color: var(--text) !important;
   caret-color: var(--accent);
   font-family: var(--mono);
   font-size: 13px;
   line-height: 1.65;
   padding: 0;
   tab-size: 4;
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 52px;
+  display: block;
+  overflow: hidden;
 }
 .code:focus { outline: none; }
 .code::selection { background: color-mix(in srgb, var(--accent) 25%, transparent); }
+.code::placeholder { color: var(--text-faint); opacity: 0.8; }
 
 /* Cell actions — fade in on hover */
 .cell-actions {
