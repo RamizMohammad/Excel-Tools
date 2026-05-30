@@ -36,9 +36,9 @@ from __future__ import annotations
 import argparse
 import os
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from .kernel_manager import KernelSession
 
@@ -62,12 +62,22 @@ async def health():
     return {"ok": True, "service": "jupyxl-kernel"}
 
 
-# Serve the built frontend. Must be mounted AFTER all API routes so /ws and
-# /health are matched first. The directory won't exist during local Python-only
-# runs; skip gracefully so the dev workflow isn't broken.
-_DIST = os.path.join(os.path.dirname(__file__), "..", "dist")
-if os.path.isdir(_DIST):
-    app.mount("/", StaticFiles(directory=_DIST, html=True), name="static")
+_DIST = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "dist"))
+
+
+@app.get("/{full_path:path}")
+async def serve_frontend(full_path: str):
+    if not os.path.isdir(_DIST):
+        raise HTTPException(404)
+    target = os.path.normpath(os.path.join(_DIST, full_path or "taskpane.html"))
+    if not target.startswith(_DIST):  # path traversal guard
+        raise HTTPException(403)
+    if os.path.isfile(target):
+        return FileResponse(target)
+    index = os.path.join(_DIST, "taskpane.html")
+    if os.path.isfile(index):
+        return FileResponse(index)
+    raise HTTPException(404)
 
 
 def _translate(msg: dict, cell_id: str) -> dict | None:
