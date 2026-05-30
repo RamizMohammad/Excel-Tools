@@ -1,7 +1,7 @@
 /* global Office */
+import { hideSuggestions, renderSuggestions, selectSuggestion, updateSuggestions } from "./autocomplete.js";
 import { readSelection, writeDataFrame } from "./excel-writer.js";
 import { KernelClient } from "./kernel-client.js";
-import { updateSuggestions, selectSuggestion, hideSuggestions, renderSuggestions } from "./autocomplete.js";
 
 const DEFAULT_KERNEL_URL =
   location.hostname === "localhost" || location.hostname === "127.0.0.1"
@@ -162,6 +162,21 @@ function deleteCell(cell) {
 }
 
 function handleKeydown(e, cell, textarea, suggestionsState) {
+  const run = (e.ctrlKey || e.metaKey) && e.key === "Enter";
+  const runNext = e.shiftKey && e.key === "Enter";
+  if (run) {
+    e.preventDefault();
+    runCell(cell);
+    return;
+  } else if (runNext) {
+    e.preventDefault();
+    runCell(cell);
+    const idx = state.cells.indexOf(cell);
+    if (idx === state.cells.length - 1) addCell("", cell);
+    else state.cells[idx + 1].el.querySelector(".code").focus();
+    return;
+  }
+
   // Handle suggestions navigation
   if (suggestionsState && suggestionsState.visible) {
     if (e.key === "ArrowDown") {
@@ -174,7 +189,7 @@ function handleKeydown(e, cell, textarea, suggestionsState) {
       suggestionsState.selectedIndex = (suggestionsState.selectedIndex - 1 + suggestionsState.items.length) % suggestionsState.items.length;
       renderSuggestions(suggestionsState);
       return;
-    } else if (e.key === "Enter") {
+    } else if (e.key === "Enter" || e.key === "Tab") {
       e.preventDefault();
       selectSuggestion(textarea, suggestionsState);
       return;
@@ -194,19 +209,8 @@ function handleKeydown(e, cell, textarea, suggestionsState) {
     textarea.selectionStart = textarea.selectionEnd = s + 4;
     cell.code = textarea.value;
     autoSize(textarea);
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
     return;
-  }
-  const run = (e.ctrlKey || e.metaKey) && e.key === "Enter";
-  const runNext = e.shiftKey && e.key === "Enter";
-  if (run) {
-    e.preventDefault();
-    runCell(cell);
-  } else if (runNext) {
-    e.preventDefault();
-    runCell(cell);
-    const idx = state.cells.indexOf(cell);
-    if (idx === state.cells.length - 1) addCell("", cell);
-    else state.cells[idx + 1].el.querySelector(".code").focus();
   }
 }
 

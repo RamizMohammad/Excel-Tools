@@ -41,22 +41,17 @@ const SUGGESTIONS_DB = {
 export function updateSuggestions(textarea, suggestionsState) {
   const text = textarea.value;
   const cursorPos = textarea.selectionStart;
-  const lineStart = text.lastIndexOf("\n", cursorPos - 1) + 1;
-  const lineText = text.substring(lineStart, cursorPos);
-  
-  // Extract the word being typed
-  const wordMatch = lineText.match(/\b(\w+(?:\.\w+)*(?:\()?)\s*$/);
-  const word = wordMatch ? wordMatch[1] : "";
-  
-  if (!word || word.length < 1) {
+  const query = getSuggestionQuery(text, cursorPos);
+
+  if (!query) {
     hideSuggestions(suggestionsState);
     return;
   }
   
   // Find matching suggestions
   const matches = Object.entries(SUGGESTIONS_DB)
-    .filter(([key]) => key.toLowerCase().includes(word.toLowerCase()))
-    .map(([key, value]) => ({ ...value, key, weight: calculateWeight(key, word) }))
+    .filter(([key]) => isMatch(key, query.text))
+    .map(([key, value]) => ({ ...value, key, weight: calculateWeight(key, query.text) }))
     .sort((a, b) => b.weight - a.weight)
     .slice(0, 5);
   
@@ -68,8 +63,40 @@ export function updateSuggestions(textarea, suggestionsState) {
   suggestionsState.items = matches;
   suggestionsState.selectedIndex = 0;
   suggestionsState.visible = true;
-  suggestionsState.word = word;
+  suggestionsState.query = query;
   renderSuggestions(suggestionsState);
+}
+
+function getSuggestionQuery(text, cursorPos) {
+  const lineStart = text.lastIndexOf("\n", cursorPos - 1) + 1;
+  const lineText = text.substring(lineStart, cursorPos);
+
+  if (!lineText || /\s$/.test(lineText)) return null;
+
+  const importMatch = lineText.match(/^(\s*)(import\s+[\w.]*)$/);
+  if (importMatch) {
+    return {
+      text: importMatch[2],
+      start: lineStart + importMatch[1].length,
+      end: cursorPos
+    };
+  }
+
+  const wordMatch = lineText.match(/(?:^|[^\w.])([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)$/);
+  if (!wordMatch) return null;
+
+  const word = wordMatch[1];
+  return {
+    text: word,
+    start: cursorPos - word.length,
+    end: cursorPos
+  };
+}
+
+function isMatch(key, typed) {
+  const lowerKey = key.toLowerCase();
+  const lowerTyped = typed.toLowerCase();
+  return lowerKey !== lowerTyped && lowerKey.startsWith(lowerTyped);
 }
 
 function calculateWeight(key, typed) {
@@ -117,19 +144,18 @@ export function selectSuggestion(textarea, suggestionsState) {
   if (!item) return;
   
   const text = textarea.value;
-  const cursorPos = textarea.selectionStart;
-  const lineStart = text.lastIndexOf("\n", cursorPos - 1) + 1;
-  const lineText = text.substring(lineStart, cursorPos);
+  const query = suggestionsState.query || getSuggestionQuery(text, textarea.selectionStart);
+  if (!query) {
+    hideSuggestions(suggestionsState);
+    return;
+  }
+
+  const beforeCursor = text.substring(0, query.start);
+  const afterCursor = text.substring(query.end);
   
-  // Remove the word being typed
-  const wordMatch = lineText.match(/(\b\w+(?:\.\w+)*)\s*$/);
-  const wordLen = wordMatch ? wordMatch[1].length : 0;
-  
-  const beforeCursor = text.substring(0, cursorPos - wordLen);
-  const afterCursor = text.substring(cursorPos);
-  
-  textarea.value = beforeCursor + item.key + afterCursor;
-  textarea.selectionStart = textarea.selectionEnd = beforeCursor.length + item.key.length;
+  const insertText = item.snippet && !item.snippet.includes("${") ? item.snippet : item.key;
+  textarea.value = beforeCursor + insertText + afterCursor;
+  textarea.selectionStart = textarea.selectionEnd = beforeCursor.length + insertText.length;
   
   hideSuggestions(suggestionsState);
   
@@ -139,6 +165,7 @@ export function selectSuggestion(textarea, suggestionsState) {
 
 export function hideSuggestions(suggestionsState) {
   suggestionsState.visible = false;
+  suggestionsState.query = null;
   suggestionsState.panel.classList.remove("visible");
   suggestionsState.panel.innerHTML = "";
 }
