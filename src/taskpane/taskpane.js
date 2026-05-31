@@ -10,13 +10,15 @@ const DEFAULT_KERNEL_URL =
 
 const DEFAULT_CELL_CODE = "import pandas as pd\n\ndf = pd.DataFrame({\n    \"region\": [\"North\", \"South\", \"East\"],\n    \"revenue\": [12500.5, 9800.0, 14300.75],\n    \"orders\": [120, 95, 143],\n})\nxl.write(df, anchor=\"A1\")";
 const CELLS_SESSION_KEY = "jupyxl_cells";
-const ACCOUNT_SESSION_KEY = "jupyxl_account";
+const ACCOUNT_STORAGE_KEY = "jupyxl_account";
+const AUTH_MAX_IDLE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const state = {
   client: null,
   cells: [],          // {id, code, el, outputEl, lastDataframe}
   counter: 0,
   busyCell: null,
+  account: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -26,16 +28,24 @@ Office.onReady((info) => {
   if (info.host !== Office.HostType.Excel) {
     document.getElementById("app").innerHTML =
       "<p class='hint'>JupyXL runs inside Excel. Open it from the Excel ribbon.</p>";
+    document.getElementById("auth-overlay").classList.remove("open");
     return;
   }
   wireToolbar();
   loadKernelUrl();
-  loadAccountSession();
-  loadCellsSession();
-  connectKernel();
+  addActivityTracking();
+
+  const account = loadAccountSession();
+  if (account) {
+    unlockNotebook(account);
+  } else {
+    lockNotebook();
+  }
 });
 
 function loadCellsSession() {
+  if (!state.account) return;
+
   const savedCells = readSessionJson(CELLS_SESSION_KEY);
   const codes = Array.isArray(savedCells)
     ? savedCells.filter((code) => typeof code === "string")
@@ -49,7 +59,9 @@ function loadCellsSession() {
 }
 
 function saveCellsSession() {
+  if (!state.account) return;
   writeSessionJson(CELLS_SESSION_KEY, state.cells.map((cell) => cell.code));
+  touchAccountSession();
 }
 
 function readSessionJson(key) {
@@ -72,6 +84,31 @@ function writeSessionJson(key, value) {
 function removeSessionItem(key) {
   try {
     sessionStorage.removeItem(key);
+  } catch {
+    // Ignore storage policy failures.
+  }
+}
+
+function readLocalJson(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalJson(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Some Office hosts can block durable storage; sign-in still works for this run.
+  }
+}
+
+function removeLocalItem(key) {
+  try {
+    localStorage.removeItem(key);
   } catch {
     // Ignore storage policy failures.
   }
@@ -459,18 +496,99 @@ function wireToolbar() {
   document.getElementById("btn-read-selection").addEventListener("click", insertSelectionCell);
   document.getElementById("btn-create-account").addEventListener("click", createAccount);
   document.getElementById("btn-login").addEventListener("click", loginAccount);
+  document.getElementById("btn-sign-out").addEventListener("click", signOut);
 }
 
 function loadAccountSession() {
-  const account = readSessionJson(ACCOUNT_SESSION_KEY);
-  if (account && account.email) setAccountStatus(`Signed in as ${account.email}`, "ok");
-  else setAccountStatus("Not signed in");
+  const stored = readLocalJson(ACCOUNT_STORAGE_KEY);
+  if (!stored || !stored.account || !stored.account.email || !stored.last_active_at) {
+    setAccountStatus("Not signed in");
+    return null;
+  }
+
+  const lastActive = Date.parse(stored.last_active_at);
+  if (!Number.isFinite(lastActive) || Date.now() - lastActive > AUTH_MAX_IDLE_MS) {
+    clearStoredAccount();
+    setAccountStatus("Session expired", "err");
+    return null;
+  }
+
+  state.account = stored.account;
+  touchAccountSession();
+  setAccountStatus(`Signed in as ${stored.account.email}`, "ok");
+  return stored.account;
 }
 
 function setAccountStatus(text, cls) {
   const el = document.getElementById("account-status");
   el.textContent = text;
   el.className = "account-status " + (cls || "");
+}
+
+function setAuthMessage(text, cls) {
+  const el = document.getElementById("auth-message");
+  el.textContent = text;
+  el.className = "auth-message " + (cls || "");
+}
+
+function persistAccount(account) {
+  state.account = account;
+  writeLocalJson(ACCOUNT_STORAGE_KEY, {
+    account,
+    last_active_at: new Date().toISOString(),
+  });
+  setAccountStatus(`Signed in as ${account.email}`, "ok");
+}
+
+function touchAccountSession() {
+  if (!state.account) return;
+  writeLocalJson(ACCOUNT_STORAGE_KEY, {
+    account: state.account,
+    last_active_at: new Date().toISOString(),
+  });
+}
+
+function clearStoredAccount() {
+  state.account = null;
+  removeLocalItem(ACCOUNT_STORAGE_KEY);
+  removeSessionItem(CELLS_SESSION_KEY);
+}
+
+function lockNotebook() {
+  if (!state.account) removeSessionItem(CELLS_SESSION_KEY);
+  document.getElementById("auth-overlay").classList.add("open");
+  document.getElementById("app").classList.add("locked");
+  setStatus("sign in required", "pending");
+  if (state.client) {
+    state.client.close();
+    state.client = null;
+  }
+}
+
+function unlockNotebook(account) {
+  persistAccount(account);
+  document.getElementById("auth-overlay").classList.remove("open");
+  document.getElementById("app").classList.remove("locked");
+  setAuthMessage("Notebook sessions are saved after sign-in.");
+  if (state.cells.length === 0) loadCellsSession();
+  connectKernel();
+}
+
+function signOut() {
+  clearStoredAccount();
+  document.getElementById("cells").innerHTML = "";
+  state.cells = [];
+  state.counter = 0;
+  state.busyCell = null;
+  setAccountStatus("Not signed in");
+  setAuthMessage("Signed out. Sign in to continue.", "err");
+  lockNotebook();
+}
+
+function addActivityTracking() {
+  ["click", "keydown", "input"].forEach((eventName) => {
+    document.addEventListener(eventName, touchAccountSession, { passive: true });
+  });
 }
 
 function accountPayload(includeName) {
@@ -509,27 +627,31 @@ async function submitAccount(path, payload) {
 
 async function createAccount() {
   setAccountStatus("Creating…");
+  setAuthMessage("Creating account…");
   try {
     const account = await submitAccount("/api/accounts", accountPayload(true));
-    writeSessionJson(ACCOUNT_SESSION_KEY, account);
+    persistAccount(account);
     document.getElementById("account-password").value = "";
-    setAccountStatus(`Signed in as ${account.email}`, "ok");
+    unlockNotebook(account);
   } catch (e) {
-    removeSessionItem(ACCOUNT_SESSION_KEY);
+    clearStoredAccount();
     setAccountStatus(e.message || "Could not create account", "err");
+    setAuthMessage(e.message || "Could not create account", "err");
   }
 }
 
 async function loginAccount() {
   setAccountStatus("Signing in…");
+  setAuthMessage("Signing in…");
   try {
     const account = await submitAccount("/api/sessions", accountPayload(false));
-    writeSessionJson(ACCOUNT_SESSION_KEY, account);
+    persistAccount(account);
     document.getElementById("account-password").value = "";
-    setAccountStatus(`Signed in as ${account.email}`, "ok");
+    unlockNotebook(account);
   } catch (e) {
-    removeSessionItem(ACCOUNT_SESSION_KEY);
+    clearStoredAccount();
     setAccountStatus(e.message || "Could not sign in", "err");
+    setAuthMessage(e.message || "Could not sign in", "err");
   }
 }
 

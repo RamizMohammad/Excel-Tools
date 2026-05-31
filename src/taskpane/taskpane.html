@@ -47,15 +47,7 @@
           <span>Account</span>
           <span id="account-status" class="account-status">Not signed in</span>
         </div>
-        <div id="account-form" class="account-form">
-          <input id="account-name" type="text" autocomplete="name" placeholder="Name" />
-          <input id="account-email" type="email" autocomplete="email" placeholder="Email" />
-          <input id="account-password" type="password" autocomplete="new-password" placeholder="Password" />
-          <div class="account-actions">
-            <button id="btn-create-account" type="button">Create</button>
-            <button id="btn-login" type="button">Sign in</button>
-          </div>
-        </div>
+        <button id="btn-sign-out" class="sign-out-btn" type="button">Sign out</button>
       </div>
     </section>
 
@@ -64,6 +56,26 @@
     <footer class="footer">
       <span><kbd>Ctrl/⌘</kbd>+<kbd>↵</kbd> run · <kbd>Shift</kbd>+<kbd>↵</kbd> run + next · <kbd>Tab</kbd> indent</span>
     </footer>
+  </div>
+
+  <div id="auth-overlay" class="auth-overlay open" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+    <section class="auth-dialog">
+      <div class="brand auth-brand">
+        <span class="mark">▮▮</span>
+        <span class="name">JupyXL</span>
+      </div>
+      <h1 id="auth-title">Sign in</h1>
+      <div class="account-form">
+        <input id="account-name" type="text" autocomplete="name" placeholder="Name" />
+        <input id="account-email" type="email" autocomplete="email" placeholder="Email" />
+        <input id="account-password" type="password" autocomplete="current-password" placeholder="Password" />
+        <div class="account-actions">
+          <button id="btn-login" type="button">Sign in</button>
+          <button id="btn-create-account" type="button">Create account</button>
+        </div>
+      </div>
+      <p id="auth-message" class="auth-message">Notebook sessions are saved after sign-in.</p>
+    </section>
   </div>
 
   <script src="taskpane.js"></script>

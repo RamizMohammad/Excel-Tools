@@ -101,6 +101,11 @@ html, body {
   height: 100vh;
   overflow: hidden;
 }
+#app.locked {
+  filter: blur(1px);
+  pointer-events: none;
+  user-select: none;
+}
 
 /* ============================================================
    Top bar
@@ -349,17 +354,76 @@ html, body {
   cursor: pointer;
 }
 
-#btn-create-account {
+#btn-login {
   background: var(--accent);
   color: var(--accent-text);
   border: 1px solid transparent;
 }
 
-#btn-login {
+#btn-create-account {
   background: var(--bg-input);
   color: var(--text-dim);
   border: 1px solid var(--line);
 }
+
+.sign-out-btn {
+  width: 100%;
+  font-family: var(--ui);
+  font-weight: 600;
+  font-size: 12px;
+  background: var(--bg-input);
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.sign-out-btn:hover {
+  color: var(--err);
+  border-color: color-mix(in srgb, var(--err) 35%, var(--line));
+}
+
+.auth-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+}
+.auth-overlay.open { display: flex; }
+
+.auth-dialog {
+  width: min(100%, 360px);
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: 0 16px 42px rgba(0,0,0,.18);
+  padding: 18px;
+}
+
+.auth-brand {
+  margin-bottom: 14px;
+}
+
+.auth-dialog h1 {
+  margin: 0 0 12px;
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.auth-message {
+  min-height: 18px;
+  margin: 10px 0 0;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.auth-message.err { color: var(--err); }
 
 /* ============================================================
    Cells
