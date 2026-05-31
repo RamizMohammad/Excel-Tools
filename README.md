@@ -47,6 +47,8 @@ its `wss://` URL in **Settings → Kernel endpoint**. Everything else is identic
 cd server
 python -m venv .venv && source .venv/bin/activate   # optional
 pip install -r requirements.txt
+export MONGODB_URI='mongodb+srv://ramiz:<db_password>@cluster0.wwkvolc.mongodb.net/?appName=Cluster0'
+# optional: export MONGODB_DB='jupyxl'
 python main.py            # ws://localhost:8765/ws
 # or, matching the HTTPS task pane cleanly:
 python main.py --tls      # wss://localhost:8765/ws   (needs step 2's certs)

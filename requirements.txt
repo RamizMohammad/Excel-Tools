@@ -8,5 +8,9 @@ ipykernel>=6.29
 pandas>=2.0
 numpy>=1.24
 
+# --- account storage ---
+pymongo[srv]>=4.7
+email-validator>=2.1
+
 # --- test only (for server/test_client.py) ---
 websockets>=12.0

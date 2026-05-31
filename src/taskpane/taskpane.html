@@ -41,6 +41,22 @@
         Run the kernel server locally (<code>python server/main.py</code>), or point this at a hosted
         <code>wss://</code> endpoint for the pure-web / mobile story.
       </p>
+
+      <div class="account-panel">
+        <div class="account-head">
+          <span>Account</span>
+          <span id="account-status" class="account-status">Not signed in</span>
+        </div>
+        <div id="account-form" class="account-form">
+          <input id="account-name" type="text" autocomplete="name" placeholder="Name" />
+          <input id="account-email" type="email" autocomplete="email" placeholder="Email" />
+          <input id="account-password" type="password" autocomplete="new-password" placeholder="Password" />
+          <div class="account-actions">
+            <button id="btn-create-account" type="button">Create</button>
+            <button id="btn-login" type="button">Sign in</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <main id="cells"></main>

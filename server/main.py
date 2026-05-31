@@ -34,11 +34,18 @@ Server -> client (JSON), all tagged with the originating cell_id:
 from __future__ import annotations
 
 import argparse
+import asyncio
+import base64
+import hashlib
+import hmac
 import os
+from datetime import datetime, timezone
+from typing import Any
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from pydantic import BaseModel, EmailStr, Field
 
 from .kernel_manager import KernelSession
 
@@ -55,6 +62,109 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class AccountCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=256)
+
+
+class AccountLogin(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=256)
+
+
+_mongo_client = None
+
+
+def _mongo_uri() -> str:
+    uri = os.getenv("MONGODB_URI", "").strip()
+    if not uri:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "MONGODB_URI is not configured on the server",
+        )
+    return uri
+
+
+def _accounts_collection():
+    global _mongo_client
+    if _mongo_client is None:
+        from pymongo import MongoClient
+
+        _mongo_client = MongoClient(_mongo_uri(), serverSelectionTimeoutMS=5000)
+        _mongo_client.admin.command("ping")
+
+    db_name = os.getenv("MONGODB_DB", "jupyxl")
+    collection = _mongo_client[db_name]["accounts"]
+    collection.create_index("email", unique=True)
+    return collection
+
+
+def _hash_password(password: str, salt: bytes | None = None) -> str:
+    salt = salt or os.urandom(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 210_000)
+    return (
+        base64.b64encode(salt).decode("ascii")
+        + "$"
+        + base64.b64encode(digest).decode("ascii")
+    )
+
+
+def _verify_password(password: str, stored: str) -> bool:
+    try:
+        salt_b64, digest_b64 = stored.split("$", 1)
+        salt = base64.b64decode(salt_b64.encode("ascii"))
+        expected = base64.b64decode(digest_b64.encode("ascii"))
+    except (ValueError, TypeError):
+        return False
+
+    actual = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 210_000)
+    return hmac.compare_digest(actual, expected)
+
+
+def _public_account(doc: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": str(doc["_id"]),
+        "name": doc["name"],
+        "email": doc["email"],
+        "created_at": doc.get("created_at"),
+    }
+
+
+@app.post("/api/accounts", status_code=status.HTTP_201_CREATED)
+async def create_account(payload: AccountCreate):
+    def create():
+        from pymongo.errors import DuplicateKeyError
+
+        now = datetime.now(timezone.utc).isoformat()
+        doc = {
+            "name": payload.name.strip(),
+            "email": payload.email.lower(),
+            "password_hash": _hash_password(payload.password),
+            "created_at": now,
+            "updated_at": now,
+        }
+        try:
+            result = _accounts_collection().insert_one(doc)
+        except DuplicateKeyError as exc:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Account already exists") from exc
+        doc["_id"] = result.inserted_id
+        return _public_account(doc)
+
+    return {"account": await asyncio.to_thread(create)}
+
+
+@app.post("/api/sessions")
+async def create_session(payload: AccountLogin):
+    def login():
+        doc = _accounts_collection().find_one({"email": payload.email.lower()})
+        if not doc or not _verify_password(payload.password, doc.get("password_hash", "")):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
+        return _public_account(doc)
+
+    return {"account": await asyncio.to_thread(login)}
 
 
 @app.get("/health")

@@ -8,6 +8,10 @@ const DEFAULT_KERNEL_URL =
     ? "ws://localhost:8008/ws"
     : `wss://${location.hostname}/ws`;
 
+const DEFAULT_CELL_CODE = "import pandas as pd\n\ndf = pd.DataFrame({\n    \"region\": [\"North\", \"South\", \"East\"],\n    \"revenue\": [12500.5, 9800.0, 14300.75],\n    \"orders\": [120, 95, 143],\n})\nxl.write(df, anchor=\"A1\")";
+const CELLS_SESSION_KEY = "jupyxl_cells";
+const ACCOUNT_SESSION_KEY = "jupyxl_account";
+
 const state = {
   client: null,
   cells: [],          // {id, code, el, outputEl, lastDataframe}
@@ -26,9 +30,52 @@ Office.onReady((info) => {
   }
   wireToolbar();
   loadKernelUrl();
-  addCell("import pandas as pd\n\ndf = pd.DataFrame({\n    \"region\": [\"North\", \"South\", \"East\"],\n    \"revenue\": [12500.5, 9800.0, 14300.75],\n    \"orders\": [120, 95, 143],\n})\nxl.write(df, anchor=\"A1\")");
+  loadAccountSession();
+  loadCellsSession();
   connectKernel();
 });
+
+function loadCellsSession() {
+  const savedCells = readSessionJson(CELLS_SESSION_KEY);
+  const codes = Array.isArray(savedCells)
+    ? savedCells.filter((code) => typeof code === "string")
+    : [];
+
+  if (codes.length) {
+    codes.forEach((code) => addCell(code));
+  } else {
+    addCell(DEFAULT_CELL_CODE);
+  }
+}
+
+function saveCellsSession() {
+  writeSessionJson(CELLS_SESSION_KEY, state.cells.map((cell) => cell.code));
+}
+
+function readSessionJson(key) {
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionJson(key, value) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Session storage can be disabled by host policy; the app still runs.
+  }
+}
+
+function removeSessionItem(key) {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {
+    // Ignore storage policy failures.
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Kernel connection
@@ -128,6 +175,7 @@ function addCell(initialCode = "", afterCell = null) {
   textarea.addEventListener("input", () => {
     cell.code = textarea.value;
     autoSize(textarea);
+    saveCellsSession();
     updateSuggestions(textarea, suggestionsState);
   });
   textarea.addEventListener("keydown", (e) => handleKeydown(e, cell, textarea, suggestionsState));
@@ -152,6 +200,7 @@ function addCell(initialCode = "", afterCell = null) {
   // Auto-size after DOM insertion to ensure proper calculations
   requestAnimationFrame(() => autoSize(textarea));
   textarea.focus();
+  saveCellsSession();
   return cell;
 }
 
@@ -159,6 +208,7 @@ function deleteCell(cell) {
   cell.el.remove();
   state.cells = state.cells.filter((c) => c !== cell);
   if (state.cells.length === 0) addCell();
+  else saveCellsSession();
 }
 
 function handleKeydown(e, cell, textarea, suggestionsState) {
@@ -209,6 +259,7 @@ function handleKeydown(e, cell, textarea, suggestionsState) {
     textarea.selectionStart = textarea.selectionEnd = s + 4;
     cell.code = textarea.value;
     autoSize(textarea);
+    saveCellsSession();
     textarea.dispatchEvent(new Event("input", { bubbles: true }));
     return;
   }
@@ -406,6 +457,80 @@ function wireToolbar() {
   });
   document.getElementById("btn-connect").addEventListener("click", connectKernel);
   document.getElementById("btn-read-selection").addEventListener("click", insertSelectionCell);
+  document.getElementById("btn-create-account").addEventListener("click", createAccount);
+  document.getElementById("btn-login").addEventListener("click", loginAccount);
+}
+
+function loadAccountSession() {
+  const account = readSessionJson(ACCOUNT_SESSION_KEY);
+  if (account && account.email) setAccountStatus(`Signed in as ${account.email}`, "ok");
+  else setAccountStatus("Not signed in");
+}
+
+function setAccountStatus(text, cls) {
+  const el = document.getElementById("account-status");
+  el.textContent = text;
+  el.className = "account-status " + (cls || "");
+}
+
+function accountPayload(includeName) {
+  const name = document.getElementById("account-name").value.trim();
+  const email = document.getElementById("account-email").value.trim();
+  const password = document.getElementById("account-password").value;
+  const payload = { email, password };
+  if (includeName) payload.name = name;
+  return payload;
+}
+
+function apiBaseUrl() {
+  const kernelUrl = document.getElementById("kernel-url").value.trim() || DEFAULT_KERNEL_URL;
+  try {
+    const url = new URL(kernelUrl);
+    url.protocol = url.protocol === "wss:" ? "https:" : "http:";
+    url.pathname = "";
+    url.search = "";
+    url.hash = "";
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return location.origin;
+  }
+}
+
+async function submitAccount(path, payload) {
+  const res = await fetch(`${apiBaseUrl()}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.detail || "Account request failed");
+  return body.account;
+}
+
+async function createAccount() {
+  setAccountStatus("Creating…");
+  try {
+    const account = await submitAccount("/api/accounts", accountPayload(true));
+    writeSessionJson(ACCOUNT_SESSION_KEY, account);
+    document.getElementById("account-password").value = "";
+    setAccountStatus(`Signed in as ${account.email}`, "ok");
+  } catch (e) {
+    removeSessionItem(ACCOUNT_SESSION_KEY);
+    setAccountStatus(e.message || "Could not create account", "err");
+  }
+}
+
+async function loginAccount() {
+  setAccountStatus("Signing in…");
+  try {
+    const account = await submitAccount("/api/sessions", accountPayload(false));
+    writeSessionJson(ACCOUNT_SESSION_KEY, account);
+    document.getElementById("account-password").value = "";
+    setAccountStatus(`Signed in as ${account.email}`, "ok");
+  } catch (e) {
+    removeSessionItem(ACCOUNT_SESSION_KEY);
+    setAccountStatus(e.message || "Could not sign in", "err");
+  }
 }
 
 async function runAll() {
